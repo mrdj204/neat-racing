@@ -153,3 +153,4 @@ cython_debug/
 
 /genomes
 /my_checkpoints
+generation.bin
