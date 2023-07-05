@@ -1,6 +1,8 @@
 import configparser
+import gzip
 import os
 import pickle
+import random
 import struct
 import time
 from statistics import mean, stdev
@@ -67,14 +69,8 @@ class AI:
             if ID:
                 try:
                     if ID == -1:
-                        folder_path = 'genomes'
-                        files = os.listdir(folder_path)
-                        files = [f for f in files if os.path.isfile(os.path.join(folder_path, f))]
-                        files = sorted(files, key=lambda x: int(x.split(".")[0]))
-                        last_file = os.path.join(folder_path, files[-1])
-                        with open(last_file, "rb") as f:
+                        with open('best/best.pickle', "rb") as f:
                             genome = pickle.load(f)
-                            ID = int(files[-1].split(".")[0])
                     else:
                         with open(f"genomes/{ID}.pickle", "rb") as f:
                             genome = pickle.load(f)
@@ -136,6 +132,13 @@ class AI:
                 os.makedirs(folder_path)
             with open(f"{folder_path}/{p.generation - 1}.pickle", "wb") as f:
                 pickle.dump(winner, f)
+            # For portfolio
+            best_path = 'best'
+            if not os.path.exists(best_path):
+                os.makedirs(best_path)
+            with open(f"{best_path}/best.pickle", "wb") as f:
+                pickle.dump(winner, f)
+
             # Use config to set if best genome should play each generation
             if self.config.ai.play_best_genome_each_generation:
                 self.play_genome(genome=winner)
@@ -150,13 +153,16 @@ class AI:
         Returns:
             neat.Population: The NEAT population object.
         """
+        paths = ['my_checkpoints', 'best']
+        for path in paths:
+            if not os.path.exists(path):
+                os.makedirs(path)
+
         # Create the population or load checkpoint
         if not checkpoint:
             p = neat.Population(self.neat_config)
         elif checkpoint == -1:
             folder_path = 'my_checkpoints'
-            if not os.path.exists(folder_path):
-                os.makedirs(folder_path)
             files = os.listdir(folder_path)
             files = [f for f in files if os.path.isfile(os.path.join(folder_path, f))]
             files = sorted(files, key=lambda x: int(x.split("-")[-1]))
@@ -172,11 +178,13 @@ class AI:
         p.config = self.neat_config
 
         # Add reporters
+        generation_interval = self.config.ai.generations_per_checkpoint
         p.add_reporter(CustomStdOutReporter(self.config))
         p.add_reporter(neat.StatisticsReporter())
-        generation_interval = self.config.ai.generations_per_checkpoint
         checkpoint_path = os.path.join(self.local_dir, 'my_checkpoints/neat-checkpoint-')
         p.add_reporter(neat.Checkpointer(generation_interval, filename_prefix=checkpoint_path))
+        best_checkpoint_path = os.path.join(self.local_dir, 'best/')  # this is for portfolio
+        p.add_reporter(CustomCheckpointer(generation_interval, filename_prefix=best_checkpoint_path))
         return p
 
     @staticmethod
@@ -453,3 +461,14 @@ class CustomStdOutReporter(neat.reporting.BaseReporter):
             msg (str): The informational message.
         """
         self.logger.info(msg)
+
+
+class CustomCheckpointer(neat.Checkpointer):
+    def save_checkpoint(self, config, population, species_set, generation):
+        """ Save the current simulation state. """
+        filename = f'{self.filename_prefix}checkpoint'
+        print(f"Saving checkpoint to {filename}")
+
+        with gzip.open(filename, 'w', compresslevel=5) as f:
+            data = (generation, config, population, species_set, random.getstate())
+            pickle.dump(data, f, protocol=pickle.HIGHEST_PROTOCOL)
