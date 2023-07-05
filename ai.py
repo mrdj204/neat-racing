@@ -25,7 +25,6 @@ class AI:
 
     Attributes:
         config (Config): The configuration object for the AI.
-        local_dir (str): The local directory path.
         neat_config (neat.Config): The NEAT configuration object.
 
     Methods:
@@ -45,8 +44,7 @@ class AI:
         """
         self.config = config
 
-        self.local_dir = os.path.dirname(__file__)
-        neat_config_path = os.path.join(self.local_dir, 'neat-config.txt')
+        neat_config_path = util.get_path('neat-config.ini')
         neat_config = configparser.ConfigParser()
         neat_config.read(neat_config_path)
         self.neat_config: neat.Config = neat.Config(neat.DefaultGenome, neat.DefaultReproduction,
@@ -69,16 +67,18 @@ class AI:
             if ID:
                 try:
                     if ID == -1:
-                        with open('best/best.pickle', "rb") as f:
+                        path = util.get_path(["best", "best.pickle"])
+                        with open(path, "rb") as f:
                             genome = pickle.load(f)
                     else:
-                        with open(f"genomes/{ID}.pickle", "rb") as f:
+                        path = util.get_path(["genomes", f"{ID}.pickle"])
+                        with open(path, "rb") as f:
                             genome = pickle.load(f)
                 except FileNotFoundError:
                     pass
             # Save current gen number for AI/game to read, easier than passing this value through arguements
-            with open("generation.bin", "wb") as f:
-                # TODO: this should be the file name (the generation number)
+            path = util.get_path("generation.bin")
+            with open(path, "wb") as f:
                 f.write(struct.pack("i", ID))
 
         if not genome:
@@ -120,23 +120,20 @@ class AI:
         for i in range(0, self.config.ai.generations):
             # Save current generation number to file for pygame to read
             try:
-                with open("generation.bin", "wb") as f:
+                path = util.get_path("generation.bin")
+                with open(path, "wb") as f:
                     f.write(struct.pack("i", p.generation))
             except (PermissionError, OSError) as e:
                 util.get_logger(self.config).exception(e)
             # Train AI
             winner = p.run(self.eval_genomes, 1)
             # Save best genome
-            folder_path = 'genomes'
-            if not os.path.exists(folder_path):
-                os.makedirs(folder_path)
-            with open(f"{folder_path}/{p.generation - 1}.pickle", "wb") as f:
+            folder_path = util.get_path(['genomes', f"{p.generation - 1}.pickle"])
+            with open(folder_path, "wb") as f:
                 pickle.dump(winner, f)
             # For portfolio
-            best_path = 'best'
-            if not os.path.exists(best_path):
-                os.makedirs(best_path)
-            with open(f"{best_path}/best.pickle", "wb") as f:
+            folder_path = util.get_path(['best', "best.pickle"])
+            with open(folder_path, "wb") as f:
                 pickle.dump(winner, f)
 
             # Use config to set if best genome should play each generation
@@ -153,26 +150,17 @@ class AI:
         Returns:
             neat.Population: The NEAT population object.
         """
-        paths = ['my_checkpoints', 'best']
-        for path in paths:
-            if not os.path.exists(path):
-                os.makedirs(path)
-
         # Create the population or load checkpoint
         if not checkpoint:
             p = neat.Population(self.neat_config)
         elif checkpoint == -1:
-            folder_path = 'my_checkpoints'
-            files = os.listdir(folder_path)
-            files = [f for f in files if os.path.isfile(os.path.join(folder_path, f))]
-            files = sorted(files, key=lambda x: int(x.split("-")[-1]))
             try:
-                last_file = os.path.join(folder_path, files[-1])
-                p = neat.Checkpointer.restore_checkpoint(last_file.format(checkpoint))
+                p = neat.Checkpointer.restore_checkpoint(util.get_path(['best', "checkpoint"]))
             except IndexError:
                 p = neat.Population(self.neat_config)
         else:
-            p = neat.Checkpointer.restore_checkpoint('my_checkpoints/neat-checkpoint-{}'.format(checkpoint))
+            path = util.get_path(["my_checkpoints", f"neat-checkpoint-{checkpoint}"])
+            p = neat.Checkpointer.restore_checkpoint(path)
 
         # Update config file
         p.config = self.neat_config
@@ -181,9 +169,10 @@ class AI:
         generation_interval = self.config.ai.generations_per_checkpoint
         p.add_reporter(CustomStdOutReporter(self.config))
         p.add_reporter(neat.StatisticsReporter())
-        checkpoint_path = os.path.join(self.local_dir, 'my_checkpoints/neat-checkpoint-')
-        p.add_reporter(neat.Checkpointer(generation_interval, filename_prefix=checkpoint_path))
-        best_checkpoint_path = os.path.join(self.local_dir, 'best/')  # this is for portfolio
+        checkpoint_path = util.get_path("my_checkpoints")
+        checkpoint_prefix = os.path.join(f"{checkpoint_path}", "neat-checkpoint-")
+        p.add_reporter(neat.Checkpointer(generation_interval, filename_prefix=checkpoint_prefix))
+        best_checkpoint_path = os.path.join(util.get_path("best"), "")
         p.add_reporter(CustomCheckpointer(generation_interval, filename_prefix=best_checkpoint_path))
         return p
 

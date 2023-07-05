@@ -12,12 +12,42 @@ Note:
     This code assumes the presence of a `Config` class from the `config` module.
 """
 import logging
+import os
 import sys
+from typing import Union
 
 from pydantic import BaseModel
 from pygame.math import Vector2
 
 from config import Config
+
+
+def get_path(file_path: Union[str, list[str]]) -> str:
+    if getattr(sys, 'frozen', False):
+        # Running as a bundled executable
+        local_dir = sys._MEIPASS  # PyInstaller sets this attribute
+    else:
+        # Running in a normal Python environment
+        local_dir = os.path.dirname(os.path.abspath(__file__))
+
+    if isinstance(file_path, str):
+        path = os.path.join(local_dir, file_path)
+        if "." not in file_path:
+            if not os.path.exists(path):
+                os.makedirs(path)
+        return path
+
+    else:
+        if "." in file_path[-1]:
+            path = os.path.join(local_dir, *file_path[:-1])
+            if not os.path.exists(path):
+                os.makedirs(path)
+            path = os.path.join(path, file_path[-1])
+        else:
+            path = os.path.join(local_dir, *file_path)
+            if not os.path.exists(path):
+                os.makedirs(path)
+        return path
 
 
 def get_logger(config: Config) -> logging.Logger:
@@ -34,7 +64,7 @@ def get_logger(config: Config) -> logging.Logger:
     if logger.handlers:
         return logger
     if config.reporting.stream_to_file:
-        logging.basicConfig(filename='neat.log', level=logging.DEBUG, filemode='a', format='%(message)s')
+        logging.basicConfig(filename=get_path('neat.log'), level=logging.DEBUG, filemode='a', format='%(message)s')
         logger.addHandler(logging.StreamHandler(sys.stdout))
     else:
         logging.basicConfig(stream=sys.stdout, level=logging.DEBUG, format='%(message)s')

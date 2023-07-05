@@ -36,6 +36,7 @@ from neat.nn import FeedForwardNetwork
 from pygame.mask import Mask
 from pygame.surface import Surface
 
+import util
 from config import Config, get_config
 from util import Beam
 
@@ -147,13 +148,12 @@ class Car:
         self.speed_list = []
 
         if color:
-            color = f"assets/cars/{color}.png"
+            color = util.get_path(["assets", "cars", f"{color}.png"])
         if not color or not os.path.isfile(color):
             directory = "assets/cars/"
             files = [f for f in os.listdir(directory) if os.path.isfile(os.path.join(directory, f)) and "pink" not in f]
             random_file = random.choice(files)
-
-            color = os.path.join(directory, random_file)
+            color = util.get_path(["assets", "cars", random_file])
         image = pygame.image.load(color)
         self.image = pygame.transform.scale(image, (self.width, self.height))
 

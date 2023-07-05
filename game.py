@@ -122,7 +122,7 @@ class Game:
         self.draw_ai_car_beam_intersections = config.ai.draw_ai_car_beam_intersections
 
         # Load generation number from file
-        file_path = Path("generation.bin")
+        file_path = Path(util.get_path("generation.bin"))
         try:
             with file_path.open("rb") as f:
                 self.generation = struct.unpack("i", f.read(4))[0]
@@ -134,7 +134,7 @@ class Game:
         pygame.init()
 
         # Create track border mask
-        track_border = pygame.image.load("assets/track-border.png")
+        track_border = pygame.image.load(util.get_path(["assets", "track-border.png"]))
         track_border_mask = pygame.mask.from_surface(track_border)
         track_border_mask_fx = pygame.mask.from_surface(pygame.transform.flip(track_border, True, False))
         track_border_mask_fy = pygame.mask.from_surface(pygame.transform.flip(track_border, False, True))
@@ -163,24 +163,24 @@ class Game:
         if not self.AI_training:
             # Create track
             if config.game.show_track_border:
-                self.track = pygame.image.load("assets/track-border.png")
+                self.track = pygame.image.load(util.get_path(["assets", "track-border.png"]))
                 self.track = pygame.mask.from_surface(self.track).to_surface()
             if config.game.show_map:
-                self.track = pygame.image.load("assets/track.png")
+                self.track = pygame.image.load(util.get_path(["assets", "track.png"]))
 
             # Create grass
-            grass = pygame.image.load("assets/grass.jpg")
+            grass = pygame.image.load(util.get_path(["assets", "grass.jpg"]))
             self.grass = pygame.transform.scale(grass, (900, 900))
 
         # Create Checkpoints
-        checkpoint_image = pygame.image.load("assets/checkpoint.png")
+        checkpoint_image = pygame.image.load(util.get_path(["assets", "checkpoint.png"]))
         self.checkpoint_image = pygame.transform.scale(checkpoint_image, (80, 20))
         self.highest_checkpoint = 0
 
         self.checkpoint_locations = util.get_checkpoint_locations()
 
         # Create finish line
-        finish_line = pygame.image.load("assets/finish.png")
+        finish_line = pygame.image.load(util.get_path(["assets", "finish.png"]))
         self.finish_line = pygame.transform.scale(finish_line, (80, 20))
         self.finish_line_mask = pygame.mask.from_surface(self.finish_line)
         self.finish_position = (28, 140)

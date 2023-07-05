@@ -3,6 +3,8 @@ from configparser import ConfigParser
 
 from pydantic import BaseSettings
 
+import util
+
 
 class MainConfig(BaseSettings):
     run_player: bool
@@ -60,7 +62,7 @@ def get_config() -> Config:
         ValueError: If the config file is invalid.
     """
     parser = ConfigParser()
-    parser.read("config.ini")
+    parser.read(util.get_path("config.ini"))
     try:
         return Config(
             main=MainConfig(
