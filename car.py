@@ -141,7 +141,7 @@ class Car:
 
         self.acceleration = .025
         self.max_speed = 3
-        self.base_speed = config.ai.base_speed if net else 0
+        self.base_speed = 0  # config.ai.base_speed if net else 0
         self.speed = self.base_speed
         self.reverse_max_speed = self.max_speed / -2
         self.deceleration = .01

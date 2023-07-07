@@ -4,6 +4,7 @@ import os
 import pickle
 import random
 import struct
+import sys
 import time
 from statistics import mean, stdev
 
@@ -208,7 +209,7 @@ class AI:
         game = Game(
             run_game=False,
             AI_enabled=True,
-            AI_training=True,
+            AI_training=False,
             total_genomes=len(genomes_to_evaluate),
         )
         game.cars = []
@@ -275,29 +276,19 @@ class CustomNet(FeedForwardNetwork):
         """
         # Get decision from super()
         decision = super().activate(inputs)
-        # Set default keys
+
+        # Set keys
         keys = {
-            pygame.K_SPACE: False,
-            pygame.K_UP: False,
+            pygame.K_SPACE: decision[0] <= decision[1],
+            pygame.K_UP: decision[0] > decision[1],
             pygame.K_DOWN: False,
-            pygame.K_LEFT: False,
-            pygame.K_RIGHT: False,
+            pygame.K_LEFT: decision[2] > decision[3],
+            pygame.K_RIGHT: decision[2] < decision[3],
             pygame.K_w: False,
             pygame.K_s: False,
             pygame.K_a: False,
             pygame.K_d: False,
         }
-        # Parse decision into key presses
-        for i, value in enumerate(decision):
-            if value:
-                if i == 0:
-                    keys[pygame.K_UP] = True
-                if i == 1:
-                    keys[pygame.K_LEFT] = True
-                elif i == 2:
-                    keys[pygame.K_RIGHT] = True
-                elif i == 3:
-                    keys[pygame.K_SPACE] = True
 
         # Send action to game and return False if game is over
         return keys

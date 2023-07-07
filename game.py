@@ -463,9 +463,12 @@ class Game:
         """
         for car in self.cars_alive:
             time_alive = (self.frame_count - car.spawn_frame) / 60
-            if time_alive >= self.time_limit or (time_alive >= 15 and car.total_checkpoints_hit <= 35):
+            if time_alive >= self.time_limit:
+                # or (time_alive >= 15 and car.total_checkpoints_hit <= 35):
                 car.alive = False
                 car.timed_out = True
+            elif time_alive > 0 and car.speed == 0:
+                car.alive = False
 
             if not car.alive:
                 self.cars_alive.remove(car)
