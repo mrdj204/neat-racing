@@ -155,8 +155,9 @@ class AI:
             p = neat.Population(self.neat_config)
         elif checkpoint == -1:
             try:
-                p = neat.Checkpointer.restore_checkpoint(util.get_path(['best', "checkpoint"]))
-            except IndexError:
+                path = os.path.join(util.get_path(['best']), "checkpoint")
+                p = neat.Checkpointer.restore_checkpoint(path)
+            except (IndexError, FileNotFoundError):
                 p = neat.Population(self.neat_config)
         else:
             path = util.get_path(["my_checkpoints", f"neat-checkpoint-{checkpoint}"])
@@ -208,7 +209,7 @@ class AI:
             run_game=False,
             AI_enabled=True,
             AI_training=True,
-            total_genomes=len(genomes_to_evaluate)
+            total_genomes=len(genomes_to_evaluate),
         )
         game.cars = []
         for genome_key, genome in genomes_to_evaluate:
@@ -277,7 +278,7 @@ class CustomNet(FeedForwardNetwork):
         # Set default keys
         keys = {
             pygame.K_SPACE: False,
-            pygame.K_UP: True,
+            pygame.K_UP: False,
             pygame.K_DOWN: False,
             pygame.K_LEFT: False,
             pygame.K_RIGHT: False,
@@ -290,11 +291,13 @@ class CustomNet(FeedForwardNetwork):
         for i, value in enumerate(decision):
             if value:
                 if i == 0:
-                    keys[pygame.K_SPACE] = True
-                elif i == 1:
+                    keys[pygame.K_UP] = True
+                if i == 1:
                     keys[pygame.K_LEFT] = True
                 elif i == 2:
                     keys[pygame.K_RIGHT] = True
+                elif i == 3:
+                    keys[pygame.K_SPACE] = True
 
         # Send action to game and return False if game is over
         return keys

@@ -102,10 +102,12 @@ class Game:
             AI_training: bool = False,
             total_genomes: int = 0,
             config: Config = get_config(),
+            hide_gui: bool = False,
     ):
         self.logger = util.get_logger(config)
         self.log_death_data = config.reporting.log_death_data
 
+        self.hide_gui = hide_gui
         self.AI_enabled = AI_enabled
         self.AI_training = AI_training
         self.total_genomes = total_genomes
@@ -225,25 +227,35 @@ class Game:
             # Update frame information
             self.update_frames(clock)
 
+            if self.hide_gui:
+                # Clear the console line
+                print('\033[2K', end='')
+                # Move the cursor to the beginning of the line
+                print('\r', end='')
+                # Print the loading percentage
+                print(f"Cars:{len(self.cars_alive)} FPS:{self.fps}", end='')
+
             # Check car collision with checkpoint / finish line
             for car in self.cars_alive:
                 car.check_checkpoints(self.checkpoint_image, self.checkpoint_locations)
                 car.check_finish_line(self.finish_line_mask, self.finish_position)
 
-            # Clear the screen
-            self.screen.fill((0, 0, 0))
+            if not self.hide_gui:
 
-            # Draw grass
-            if self.show_map and not self.AI_training:
-                self.screen.blit(self.grass, (0, 0))
+                # Clear the screen
+                self.screen.fill((0, 0, 0))
 
-            if (self.show_track_border or self.show_map) and not self.AI_training:
-                # Draw track
-                self.screen.blit(self.track, (0, 0))
-                # Draw finish line
-                self.screen.blit(self.finish_line, self.finish_position)
-                # Draw checkpoints
-                self.draw_checkpoints()
+                # Draw grass
+                if self.show_map and not self.AI_training:
+                    self.screen.blit(self.grass, (0, 0))
+
+                if (self.show_track_border or self.show_map) and not self.AI_training:
+                    # Draw track
+                    self.screen.blit(self.track, (0, 0))
+                    # Draw finish line
+                    self.screen.blit(self.finish_line, self.finish_position)
+                    # Draw checkpoints
+                    self.draw_checkpoints()
 
             # Update the cars !Threading!
             self.update_cars()
@@ -252,20 +264,22 @@ class Game:
             best_cars = sorted(self.cars_alive, key=lambda x: x.score, reverse=True)
             best_car = best_cars[0]
 
-            # Draw cars; pass sorted_best cars for filtering car limit
-            self.draw_cars(best_cars)
+            if not self.hide_gui:
+                # Draw cars; pass sorted_best cars for filtering car limit
+                self.draw_cars(best_cars)
 
             # Set highest checkpoint reached
             self.highest_checkpoint = best_car.checkpoints_hit
 
-            # Draw mouse pos
-            self.draw_mouse_pos()
+            if not self.hide_gui:
+                # Draw mouse pos
+                self.draw_mouse_pos()
 
-            # Draw game info
-            self.draw_game_info(best_car)
+                # Draw game info
+                self.draw_game_info(best_car)
 
-            # Update the display
-            pygame.display.flip()
+                # Update the display
+                pygame.display.flip()
 
             # Remove dead cars and add cars from waiting list
             self.check_dead_cars()
@@ -273,10 +287,11 @@ class Game:
             # Quit if no cars alive and AI_enabled
             running = self.cars_alive  # or not self.AI_enabled
 
-            # Check if pygame quit
-            for event in pygame.event.get():
-                if event.type == pygame.QUIT:
-                    sys.exit(0)
+            if not self.hide_gui:
+                # Check if pygame quit
+                for event in pygame.event.get():
+                    if event.type == pygame.QUIT:
+                        sys.exit(0)
 
         # Clean up
         pygame.quit()
@@ -341,7 +356,7 @@ class Game:
             None
         """
         # Update car function
-        def update_car(_car):
+        def update_car(_car: Car):
             POIs = _car.update(self.screen) if self.draw_ai_car_beams else _car.update()
             if self.draw_ai_car_beam_intersections:
                 for POI in POIs:
