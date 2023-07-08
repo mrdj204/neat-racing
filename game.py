@@ -41,13 +41,13 @@ Note:
     - checkpoint.png: Image of the checkpoint.
     - finish.png: Image of the finish line.
 """
-
 import math
 import struct
 import sys
 from concurrent.futures import ThreadPoolExecutor
 import multiprocessing
 from pathlib import Path
+from typing import Union
 
 import pygame
 from pygame.time import Clock
@@ -122,6 +122,7 @@ class Game:
         self.time_limit = config.game.time_limit
         self.draw_ai_car_beams = config.ai.draw_ai_car_beams
         self.draw_ai_car_beam_intersections = config.ai.draw_ai_car_beam_intersections
+        self.show_car_debug = config.debug.show_car_debug
 
         # Load generation number from file
         file_path = Path(util.get_path("generation.bin"))
@@ -218,11 +219,18 @@ class Game:
             else:
                 self.cars_pending.append(car)
 
+        window = util.StatsWindow()
+
+        selected_car: Union[None, Car] = None
+
         # Main game loop
         running = True
         while running:
             # Enforce 60 fps
             clock.tick(60)
+
+            if self.show_car_debug:
+                window.open(self.cars_alive)
 
             # Update frame information
             self.update_frames(clock)
@@ -262,7 +270,7 @@ class Game:
 
             # Get best cars
             best_cars = sorted(self.cars_alive, key=lambda x: x.score, reverse=True)
-            best_car = best_cars[0]
+            selected_car = best_car = best_cars[0]
 
             if not self.hide_gui:
                 # Draw cars; pass sorted_best cars for filtering car limit
@@ -282,18 +290,32 @@ class Game:
                 pygame.display.flip()
 
             # Remove dead cars and add cars from waiting list
-            self.check_dead_cars()
+            if self.frame_count > 1:
+                self.check_dead_cars()
+            # if len(self.cars_alive) == 1:
+            #     selected_car = self.cars_alive[0]
 
             # Quit if no cars alive and AI_enabled
-            running = self.cars_alive  # or not self.AI_enabled
+            running = bool(self.cars_alive)  # or not self.AI_enabled
 
             if not self.hide_gui:
-                # Check if pygame quit
+
                 for event in pygame.event.get():
+                    # Check if pygame quit
                     if event.type == pygame.QUIT:
                         sys.exit(0)
+                    # Check for left mouse click
+                    elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                        mouse_pos = pygame.mouse.get_pos()
+                        for car in self.cars_alive:
+                            if car.is_clicked(mouse_pos):
+                                selected_car = car
 
-        # Clean up
+                if selected_car:
+                    selected_car.print_debug()
+
+        window.close()
+        print('\033[2K\r', end='')
         pygame.quit()
 
     def update_frames(self, clock: Clock) -> None:
@@ -467,7 +489,7 @@ class Game:
                 # or (time_alive >= 15 and car.total_checkpoints_hit <= 35):
                 car.alive = False
                 car.timed_out = True
-            elif time_alive > 0 and car.speed == 0:
+            elif car.net and time_alive > 0 and car.speed <= 0.0251:
                 car.alive = False
 
             if not car.alive:

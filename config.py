@@ -44,11 +44,16 @@ class GameConfig(BaseSettings):
     show_map: bool
 
 
+class DebugConfig(BaseSettings):
+    show_car_debug: bool
+
+
 class Config(BaseSettings):
     main: MainConfig
     ai: AIConfig
     reporting: ReportingConfig
     game: GameConfig
+    debug: DebugConfig
 
 
 def get_config() -> Config:
@@ -98,7 +103,10 @@ def get_config() -> Config:
                 show_all_checkpoints=parser.getboolean("game", "show_all_checkpoints"),
                 show_track_border=parser.getboolean("game", "show_track_border"),
                 show_map=parser.getboolean("game", "show_map"),
-            )
+            ),
+            debug=DebugConfig(
+                show_car_debug=parser.getboolean("debug", "show_car_debug"),
+            ),
         )
     except ValueError:
         error = True

@@ -98,9 +98,9 @@ class AI:
                 Car(43, 180, game.flipped_masks, self.config, net=net),
                 Car(68, 190, game.flipped_masks, self.config, net=net),
                 Car(93, 200, game.flipped_masks, self.config, net=net),
-                # Car(43, 220, game.flipped_masks, self.config, net=net),
-                # Car(68, 230, game.flipped_masks, self.config, net=net),
-                # Car(93, 240, game.flipped_masks, self.config, net=net),
+                Car(43, 220, game.flipped_masks, self.config, net=net),
+                Car(68, 230, game.flipped_masks, self.config, net=net),
+                Car(93, 240, game.flipped_masks, self.config, net=net),
             ]
         game.run_game()
 
@@ -209,7 +209,7 @@ class AI:
         game = Game(
             run_game=False,
             AI_enabled=True,
-            AI_training=False,
+            AI_training=True,
             total_genomes=len(genomes_to_evaluate),
         )
         game.cars = []
@@ -221,7 +221,7 @@ class AI:
                 game.cars.append(
                     Car(
                         x=68,
-                        y=290,
+                        y=490,
                         net=net,
                         genome_key=genome_key,
                         flipped_masks=game.flipped_masks,

@@ -76,8 +76,10 @@ class Car:
         genome_key: Key for the car's genome in the NEAT algorithm.
 
     Methods:
-        __lt__(self, other):
+        __lt__(other):
             Compares two car objects based on their scores.
+        is_clicked(mouse_pos):
+            Checks if car is under mouse_pos
         update(screen: Union[Surface, None] = None) -> list[tuple[int, int]]:
             Updates the state of the car.
         draw(screen: Surface):
@@ -125,6 +127,8 @@ class Car:
         self.width = 25 / 3 * 2
         self.height = 49 / 3 * 2
 
+        self.keys = {}
+
         self.hp = 100
         self.alive = True
         self.one_hit_ko = True
@@ -164,9 +168,32 @@ class Car:
         self.genome_key = genome_key
 
     def debug(self):
-        return f"Score: {self.score}\n" \
-               f"Lap: {self.lap}\n" \
-               f"TCP: {self.total_checkpoints_hit}"
+        if self.keys:
+            UP = self.keys[pygame.K_UP] or self.keys[pygame.K_w]
+            SPACE = self.keys[pygame.K_SPACE]
+            LEFT = self.keys[pygame.K_LEFT] or self.keys[pygame.K_a]
+            RIGHT = self.keys[pygame.K_RIGHT] or self.keys[pygame.K_d]
+            return f"{'UP' if UP else '':^2}", \
+                   f"{'SPACE' if SPACE else '':^5}", \
+                   f"{'LEFT' if LEFT else '':^4}", \
+                   f"{'RIGHT' if RIGHT else '':^5}", \
+                   float(f"{round(self.speed, 5)}"), \
+                   f"{self.score}"
+        return "", "", "", "", 0, ""
+
+    def print_debug(self):
+        UP = self.keys[pygame.K_UP] or self.keys[pygame.K_w]
+        SPACE = self.keys[pygame.K_SPACE]
+        LEFT = self.keys[pygame.K_LEFT] or self.keys[pygame.K_a]
+        RIGHT = self.keys[pygame.K_RIGHT] or self.keys[pygame.K_d]
+
+        output = f"{'UP' if UP else '':^2} | " \
+                 f"{'SPACE' if SPACE else '':^5} | " \
+                 f"{'LEFT' if LEFT else '':^4} | " \
+                 f"{'RIGHT' if RIGHT else '':^5} | " \
+                 f"{self.speed:.3f} | " \
+                 f"{self.score}"
+        print('\033[2K\r' + output, end='')
 
     def __lt__(self, other):
         """
@@ -179,6 +206,20 @@ class Car:
             bool: True if the score of self is less than the score of other, False otherwise.
         """
         return self.score < other.score
+
+    def is_clicked(self, mouse_pos: tuple[int, int]) -> bool:
+        """
+        Check if the car is clicked by the mouse.
+
+        Args:
+            mouse_pos: A tuple containing the x and y coordinates of the mouse position.
+
+        Returns:
+            bool: A boolean value indicating whether the car is clicked by the mouse.
+        """
+        rect = pygame.transform.rotate(self.image, self.angle).get_rect()
+        rect.center = (self.x, self.y)
+        return rect.collidepoint(mouse_pos)
 
     def update(self, screen: Union[Surface, None] = None) -> list[tuple[int, int]]:
         """
@@ -199,6 +240,7 @@ class Car:
             # Get key press from User
             POIs = None
             keys = pygame.key.get_pressed()
+        self.keys = keys
 
         is_moving = False
         deceleration = self.acceleration if keys[pygame.K_SPACE] else self.deceleration

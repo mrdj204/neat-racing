@@ -14,6 +14,10 @@ Note:
 import logging
 import os
 import sys
+import time
+import tkinter as tk
+from random import random
+from tkinter import ttk
 from typing import Union
 
 from pydantic import BaseModel
@@ -174,3 +178,55 @@ class Beam(BaseModel):
 
     class Config:
         arbitrary_types_allowed = True
+
+
+tkinter_root = tk.Tk()
+tkinter_root.withdraw()
+
+
+class StatsWindow:
+
+    def __init__(self):
+        self.window = tk.Toplevel(tkinter_root)
+        self.window.geometry("+0+0")  # Set window position at (0, 0)
+
+        self.tree = None
+
+    def open(self, cars):
+        if self.tree:
+            self.tree.destroy()
+
+        self.tree = ttk.Treeview(self.window)
+        self.tree["columns"] = ("I", "UP", "SPACE", "LEFT", "RIGHT", "SPEED", "SCORE")
+
+        self.tree.column("#0", width=0, stretch=tk.NO)
+        self.tree.column("I", width=50, anchor=tk.CENTER)
+        self.tree.column("UP", width=50, anchor=tk.CENTER)
+        self.tree.column("SPACE", width=50, anchor=tk.CENTER)
+        self.tree.column("LEFT", width=50, anchor=tk.CENTER)
+        self.tree.column("RIGHT", width=50, anchor=tk.CENTER)
+        self.tree.column("SPEED", width=50, anchor=tk.CENTER)
+        self.tree.column("SCORE", width=50, anchor=tk.CENTER)
+
+        self.tree.heading("#0", text="", anchor=tk.CENTER)
+        self.tree.heading("I", text="I", anchor=tk.CENTER)
+        self.tree.heading("UP", text="UP", anchor=tk.CENTER)
+        self.tree.heading("SPACE", text="SPACE", anchor=tk.CENTER)
+        self.tree.heading("LEFT", text="LEFT", anchor=tk.CENTER)
+        self.tree.heading("RIGHT", text="RIGHT", anchor=tk.CENTER)
+        self.tree.heading("SPEED", text="SPEED", anchor=tk.CENTER)
+        self.tree.heading("SCORE", text="SCORE", anchor=tk.CENTER)
+
+        # cars = sorted(cars, key=lambda x: x.score, reverse=True)
+        for i, car in enumerate(cars):
+            UP, SPACE, LEFT, RIGHT, SPEED, SCORE = car.debug()
+            self.tree.insert("", tk.END, text=str(0 + 1), values=(i+1, UP, SPACE, LEFT, RIGHT, f"{SPEED:.3f}", SCORE))
+
+        self.tree.pack(fill="both", expand=1)
+
+        self.window.geometry(f"{self.tree.winfo_reqwidth()}x{round(22.75 * (len(cars) + 1))}+0+0")
+
+        self.window.update()
+
+    def close(self):
+        self.window.destroy()
