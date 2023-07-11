@@ -1,10 +1,28 @@
+"""
+Module: racing_ai
+
+This module contains the AI class for a racing game.
+
+Classes:
+    AI: Class representing the AI for the racing game.
+    CustomNet: Custom streamlined FeedForwardNetwork class.
+    CustomStdOutReporter: Custom reporter class for displaying information during the NEAT algorithm run.
+    CustomCheckpointer: Custom checkpointer class for saving and loading checkpoints.
+
+Dependencies:
+    Python 3.8 or higher
+    neat (NeuroEvolution of Augmenting Topologies)
+    pygame
+    statistics
+"""
+
 import configparser
 import gzip
+import math
 import os
 import pickle
 import random
 import struct
-import sys
 import time
 from statistics import mean, stdev
 
@@ -50,6 +68,43 @@ class AI:
         neat_config.read(neat_config_path)
         self.neat_config: neat.Config = neat.Config(neat.DefaultGenome, neat.DefaultReproduction,
                                                     neat.DefaultSpeciesSet, neat.DefaultStagnation, neat_config_path)
+
+    def setup_population(self, checkpoint: int = 0) -> neat.Population:
+        """
+        Sets up the population for training.
+
+        Args:
+            checkpoint (int, optional): The checkpoint number. Defaults to 0.
+
+        Returns:
+            neat.Population: The NEAT population object.
+        """
+        # Create the population or load checkpoint
+        if not checkpoint:
+            p = neat.Population(self.neat_config)
+        elif checkpoint == -1:
+            try:
+                path = os.path.join(util.get_path(['best']), "checkpoint")
+                p = neat.Checkpointer.restore_checkpoint(path)
+            except (IndexError, FileNotFoundError):
+                p = neat.Population(self.neat_config)
+        else:
+            path = util.get_path(["my_checkpoints", f"neat-checkpoint-{checkpoint}"])
+            p = neat.Checkpointer.restore_checkpoint(path)
+
+        # Update config file
+        p.config = self.neat_config
+
+        # Add reporters
+        generation_interval = self.config.ai.generations_per_checkpoint
+        p.add_reporter(CustomStdOutReporter(self.config))
+        p.add_reporter(neat.StatisticsReporter())
+        checkpoint_path = util.get_path("my_checkpoints")
+        checkpoint_prefix = os.path.join(f"{checkpoint_path}", "neat-checkpoint-")
+        p.add_reporter(neat.Checkpointer(generation_interval, filename_prefix=checkpoint_prefix))
+        best_checkpoint_path = os.path.join(util.get_path("best"), "")
+        p.add_reporter(CustomCheckpointer(generation_interval, filename_prefix=best_checkpoint_path))
+        return p
 
     def play_genome(self, genome: neat.DefaultGenome = None, ID: int = 0) -> None:
         """
@@ -141,43 +196,6 @@ class AI:
             if self.config.ai.play_best_genome_each_generation:
                 self.play_genome(genome=winner)
 
-    def setup_population(self, checkpoint: int = 0) -> neat.Population:
-        """
-        Sets up the population for training.
-
-        Args:
-            checkpoint (int, optional): The checkpoint number. Defaults to 0.
-
-        Returns:
-            neat.Population: The NEAT population object.
-        """
-        # Create the population or load checkpoint
-        if not checkpoint:
-            p = neat.Population(self.neat_config)
-        elif checkpoint == -1:
-            try:
-                path = os.path.join(util.get_path(['best']), "checkpoint")
-                p = neat.Checkpointer.restore_checkpoint(path)
-            except (IndexError, FileNotFoundError):
-                p = neat.Population(self.neat_config)
-        else:
-            path = util.get_path(["my_checkpoints", f"neat-checkpoint-{checkpoint}"])
-            p = neat.Checkpointer.restore_checkpoint(path)
-
-        # Update config file
-        p.config = self.neat_config
-
-        # Add reporters
-        generation_interval = self.config.ai.generations_per_checkpoint
-        p.add_reporter(CustomStdOutReporter(self.config))
-        p.add_reporter(neat.StatisticsReporter())
-        checkpoint_path = util.get_path("my_checkpoints")
-        checkpoint_prefix = os.path.join(f"{checkpoint_path}", "neat-checkpoint-")
-        p.add_reporter(neat.Checkpointer(generation_interval, filename_prefix=checkpoint_prefix))
-        best_checkpoint_path = os.path.join(util.get_path("best"), "")
-        p.add_reporter(CustomCheckpointer(generation_interval, filename_prefix=best_checkpoint_path))
-        return p
-
     @staticmethod
     def eval_genomes(genomes: list[tuple[int, neat.DefaultGenome]], neat_config: neat.Config) -> None:
         """
@@ -239,16 +257,18 @@ class AI:
             car_genome = genome_dict[car.genome_key]
 
             max_time = config.game.time_limit
+            time_alive = round((max_time - car.time_alive), 1)
             is_alive = 1 if car.timed_out else 0
+            avg_speed = mean(car.speed_list) if len(car.speed_list) > 1 else 1
             w1 = 1
             w2 = 0 if is_alive else 1
             w3 = max_time
-            w4 = 1
+            w4 = 2
             f1 = w1 * car.score
-            f2 = w2 * round((max_time - car.time_alive), 1)
+            f2 = w2 * time_alive
             f3 = w3 * is_alive
-            f4 = w4 * mean(car.speed_list) if len(car.speed_list) > 1 else 1
-            car_genome.fitness = f1 * (f2 + f3) * f4
+            f4 = math.pow(avg_speed, w4)
+            car_genome.fitness = round(f1 * (f2 + f3) * f4)
             # util.get_logger(config).info(f"{car_genome.fitness} = {f1} * ({f2} + {f3}) * {f4}")
             scores.append(car_genome.fitness)
 

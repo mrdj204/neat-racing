@@ -1,12 +1,25 @@
 """
 This module provides utility functions for the game.
 
+Classes:
+    Beam(BaseModel):
+        pydantic model for beams
+    StatsWindow:
+        Displays car information in popout window
+
 Functions:
+    get_path(file_path: Union[str, list[str]]) -> str:
+        Return the absolute path for the given file path.
+
     get_logger(config: Config) -> logging.Logger:
         Returns a logger object configured based on the provided `Config` object.
 
     get_checkpoint_locations() -> list[tuple[tuple[int, int], int]]:
         Returns a list of checkpoint locations in the form of (position, angle) tuples.
+
+Dependencies:
+    pydantic.BaseModel
+    pygame.math.Vector2
 
 Note:
     This code assumes the presence of a `Config` class from the `config` module.
@@ -14,9 +27,7 @@ Note:
 import logging
 import os
 import sys
-import time
 import tkinter as tk
-from random import random
 from tkinter import ttk
 from typing import Union
 
@@ -27,6 +38,36 @@ from config import Config
 
 
 def get_path(file_path: Union[str, list[str]]) -> str:
+    """
+    Return the absolute path for the given file path.
+
+    Args:
+        file_path (Union[str, List[str]]): A file path as a string or a list of strings representing a file path.
+
+    Returns:
+        str: The absolute path of the file.
+
+    Raises:
+        None
+
+    Notes:
+        This function determines the appropriate path based on whether the script is running as a bundled executable or
+        in a normal Python environment. If the file path is a string, it is joined with the local directory and
+        returned. If the file path is a list of strings, the elements are joined with the local directory and the
+        resulting path is returned.
+
+        If the file path does not contain a file extension (i.e., "."), the function checks if the directory exists and
+        creates it if necessary.
+
+    Example:
+        # Running as a bundled executable
+        get_path("data/file.txt")
+        # Output: '/path/to/executable/data/file.txt'
+
+        # Running in a normal Python environment
+        get_path(["data", "file.txt"])
+        # Output: '/path/to/script/data/file.txt'
+    """
     if getattr(sys, 'frozen', False):
         # Running as a bundled executable
         local_dir = sys._MEIPASS  # PyInstaller sets this attribute
@@ -185,19 +226,48 @@ tkinter_root.withdraw()
 
 
 class StatsWindow:
+    """
+    A class representing a statistics window for displaying car data.
+
+    Attributes:
+        window (Tk): The Tkinter Toplevel window.
+        tree (ttk.Treeview): The Treeview widget to display car data.
+
+    Methods:
+        open(cars): Open the statistics window and display car data.
+        close(): Close the statistics window.
+
+    Example:
+        stats_window = StatsWindow()
+        stats_window.open(cars)
+        ...
+        stats_window.close()
+    """
 
     def __init__(self):
+        """Initialize the StatsWindow class."""
         self.window = tk.Toplevel(tkinter_root)
         self.window.geometry("+0+0")  # Set window position at (0, 0)
 
         self.tree = None
 
     def open(self, cars):
+        """Open the statistics window and display car data.
+
+        Args:
+            cars (list): A list of car objects.
+
+        Returns:
+            None
+
+        Example:
+            stats_window.open(cars)
+        """
         if self.tree:
             self.tree.destroy()
 
         self.tree = ttk.Treeview(self.window)
-        self.tree["columns"] = ("I", "UP", "SPACE", "LEFT", "RIGHT", "SPEED", "SCORE")
+        self.tree["columns"] = ("I", "UP", "SPACE", "LEFT", "RIGHT", "AVG", "SPEED", "MAX", "SCORE")
 
         self.tree.column("#0", width=0, stretch=tk.NO)
         self.tree.column("I", width=50, anchor=tk.CENTER)
@@ -205,7 +275,9 @@ class StatsWindow:
         self.tree.column("SPACE", width=50, anchor=tk.CENTER)
         self.tree.column("LEFT", width=50, anchor=tk.CENTER)
         self.tree.column("RIGHT", width=50, anchor=tk.CENTER)
+        self.tree.column("AVG", width=50, anchor=tk.CENTER)
         self.tree.column("SPEED", width=50, anchor=tk.CENTER)
+        self.tree.column("MAX", width=50, anchor=tk.CENTER)
         self.tree.column("SCORE", width=50, anchor=tk.CENTER)
 
         self.tree.heading("#0", text="", anchor=tk.CENTER)
@@ -214,13 +286,14 @@ class StatsWindow:
         self.tree.heading("SPACE", text="SPACE", anchor=tk.CENTER)
         self.tree.heading("LEFT", text="LEFT", anchor=tk.CENTER)
         self.tree.heading("RIGHT", text="RIGHT", anchor=tk.CENTER)
+        self.tree.heading("AVG", text="AVG", anchor=tk.CENTER)
         self.tree.heading("SPEED", text="SPEED", anchor=tk.CENTER)
+        self.tree.heading("MAX", text="MAX", anchor=tk.CENTER)
         self.tree.heading("SCORE", text="SCORE", anchor=tk.CENTER)
 
         # cars = sorted(cars, key=lambda x: x.score, reverse=True)
         for i, car in enumerate(cars):
-            UP, SPACE, LEFT, RIGHT, SPEED, SCORE = car.debug()
-            self.tree.insert("", tk.END, text=str(0 + 1), values=(i+1, UP, SPACE, LEFT, RIGHT, f"{SPEED:.3f}", SCORE))
+            self.tree.insert("", tk.END, text=str(0 + 1), values=(i+1, *car.debug(3)))
 
         self.tree.pack(fill="both", expand=1)
 
@@ -229,4 +302,12 @@ class StatsWindow:
         self.window.update()
 
     def close(self):
+        """Close the statistics window.
+
+        Returns:
+            None
+
+        Example:
+            stats_window.close()
+        """
         self.window.destroy()

@@ -29,6 +29,7 @@ Note:
 import math
 import os
 import random
+from statistics import mean
 from typing import Union
 
 import pygame
@@ -78,6 +79,8 @@ class Car:
     Methods:
         __lt__(other):
             Compares two car objects based on their scores.
+        debug(round_to) -> tuple[str, str, str, str, float, str]:
+            Returns car debug infro
         is_clicked(mouse_pos):
             Checks if car is under mouse_pos
         update(screen: Union[Surface, None] = None) -> list[tuple[int, int]]:
@@ -147,6 +150,7 @@ class Car:
         self.max_speed = 3
         self.base_speed = 0  # config.ai.base_speed if net else 0
         self.speed = self.base_speed
+        self.max_speed_hit = 0
         self.reverse_max_speed = self.max_speed / -2
         self.deceleration = .01
         self.speed_list = []
@@ -167,32 +171,58 @@ class Car:
         self.flipped_masks = flipped_masks
         self.genome_key = genome_key
 
-    def debug(self):
+    def debug(self, round_to: int) -> tuple[str, str, str, str, str, str, str, str]:
+        """
+        Return debug information about the car.
+
+        This method retrieves the state of various keys (UP, SPACE, LEFT, RIGHT) and the car's speed and score. It
+        returns a tuple containing strings representing the state of each key, the speed as a float, and the score
+        as a string.
+
+        Args:
+            round_to (int): How many digits to round floats to.
+
+        Returns:
+            tuple[str, str, str, str, str, str, str, str]: A tuple containing debug information about the car.
+
+        Example:
+            car_debug_info = car.debug()
+
+        Note:
+            This method assumes that the `keys` attribute is properly populated with the state of relevant keys.
+        """
         if self.keys:
+            CUTOFF = round_to + 2
             UP = self.keys[pygame.K_UP] or self.keys[pygame.K_w]
             SPACE = self.keys[pygame.K_SPACE]
             LEFT = self.keys[pygame.K_LEFT] or self.keys[pygame.K_a]
             RIGHT = self.keys[pygame.K_RIGHT] or self.keys[pygame.K_d]
-            return f"{'UP' if UP else '':^2}", \
-                   f"{'SPACE' if SPACE else '':^5}", \
-                   f"{'LEFT' if LEFT else '':^4}", \
-                   f"{'RIGHT' if RIGHT else '':^5}", \
-                   float(f"{round(self.speed, 5)}"), \
-                   f"{self.score}"
-        return "", "", "", "", 0, ""
+            AVG_SPEED = mean(self.speed_list) if len(self.speed_list) > 1 else 1
+            return (
+                f"{'UP' if UP else '':^2}",  # UP Key
+                f"{'SPACE' if SPACE else '':^5}",  # SPACE Key
+                f"{'LEFT' if LEFT else '':^4}",  # LEFT Key
+                f"{'RIGHT' if RIGHT else '':^5}",  # RIGHT Key
+                f"{str(round(AVG_SPEED, round_to)):{CUTOFF}}",  # Avg speed
+                f"{str(round(self.speed, round_to)):{CUTOFF}}",  # Current Speed
+                f"{str(round(self.max_speed_hit, round_to)):{CUTOFF}}",  # Max speed hit
+                f"{self.score}"
+            )
+        return "", "", "", "", "", "", "", ""
 
     def print_debug(self):
-        UP = self.keys[pygame.K_UP] or self.keys[pygame.K_w]
-        SPACE = self.keys[pygame.K_SPACE]
-        LEFT = self.keys[pygame.K_LEFT] or self.keys[pygame.K_a]
-        RIGHT = self.keys[pygame.K_RIGHT] or self.keys[pygame.K_d]
+        """
+        Print the debug information of the car.
 
-        output = f"{'UP' if UP else '':^2} | " \
-                 f"{'SPACE' if SPACE else '':^5} | " \
-                 f"{'LEFT' if LEFT else '':^4} | " \
-                 f"{'RIGHT' if RIGHT else '':^5} | " \
-                 f"{self.speed:.3f} | " \
-                 f"{self.score}"
+        This method prints the debug information retrieved from the `debug` method.
+
+        Example:
+            car.print_debug()
+
+        Note:
+            This method assumes that the `debug` method returns the desired debug information.
+        """
+        output = " | ".join(self.debug(2))
         print('\033[2K\r' + output, end='')
 
     def __lt__(self, other):
@@ -283,6 +313,7 @@ class Car:
                     self.speed = self.base_speed
 
         self.speed_list.append(self.speed)
+        self.max_speed_hit = max(self.max_speed_hit, self.speed)
 
         if is_moving:
             if keys[pygame.K_LEFT] or keys[pygame.K_a]:

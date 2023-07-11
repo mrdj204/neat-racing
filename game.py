@@ -131,7 +131,7 @@ class Game:
                 self.generation = struct.unpack("i", f.read(4))[0]
         except Exception as error:
             self.logger.error(error)
-            raise error
+            self.generation = 0
 
         # Initialize Pygame
         pygame.init()
@@ -229,18 +229,17 @@ class Game:
             # Enforce 60 fps
             clock.tick(60)
 
+            # Show car debug window
             if self.show_car_debug:
                 window.open(self.cars_alive)
 
             # Update frame information
             self.update_frames(clock)
 
+            # Print game info if not using GUI
             if self.hide_gui:
-                # Clear the console line
                 print('\033[2K', end='')
-                # Move the cursor to the beginning of the line
                 print('\r', end='')
-                # Print the loading percentage
                 print(f"Cars:{len(self.cars_alive)} FPS:{self.fps}", end='')
 
             # Check car collision with checkpoint / finish line
@@ -258,10 +257,13 @@ class Game:
                     self.screen.blit(self.grass, (0, 0))
 
                 if (self.show_track_border or self.show_map) and not self.AI_training:
+
                     # Draw track
                     self.screen.blit(self.track, (0, 0))
+
                     # Draw finish line
                     self.screen.blit(self.finish_line, self.finish_position)
+
                     # Draw checkpoints
                     self.draw_checkpoints()
 
@@ -269,17 +271,18 @@ class Game:
             self.update_cars()
 
             # Get best cars
-            best_cars = sorted(self.cars_alive, key=lambda x: x.score, reverse=True)
-            selected_car = best_car = best_cars[0]
+            best_cars: list[Car] = sorted(self.cars_alive, key=lambda x: x.score, reverse=True)
+            best_car = best_cars[0]
 
+            # Draw cars; pass sorted_best cars for filtering car limit
             if not self.hide_gui:
-                # Draw cars; pass sorted_best cars for filtering car limit
                 self.draw_cars(best_cars)
 
             # Set highest checkpoint reached
             self.highest_checkpoint = best_car.checkpoints_hit
 
             if not self.hide_gui:
+
                 # Draw mouse pos
                 self.draw_mouse_pos()
 
@@ -292,18 +295,19 @@ class Game:
             # Remove dead cars and add cars from waiting list
             if self.frame_count > 1:
                 self.check_dead_cars()
-            # if len(self.cars_alive) == 1:
-            #     selected_car = self.cars_alive[0]
+                if selected_car and not selected_car.alive:
+                    selected_car = None
 
             # Quit if no cars alive and AI_enabled
             running = bool(self.cars_alive)  # or not self.AI_enabled
 
             if not self.hide_gui:
-
                 for event in pygame.event.get():
+
                     # Check if pygame quit
                     if event.type == pygame.QUIT:
                         sys.exit(0)
+
                     # Check for left mouse click
                     elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
                         mouse_pos = pygame.mouse.get_pos()
@@ -311,9 +315,13 @@ class Game:
                             if car.is_clicked(mouse_pos):
                                 selected_car = car
 
+                # Print debug for selected car if selected, else for best car
                 if selected_car:
                     selected_car.print_debug()
+                else:
+                    best_car.print_debug()
 
+        # Close app
         window.close()
         print('\033[2K\r', end='')
         pygame.quit()
